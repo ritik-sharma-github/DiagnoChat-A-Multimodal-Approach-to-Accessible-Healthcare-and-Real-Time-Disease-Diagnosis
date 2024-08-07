@@ -47,7 +47,18 @@ The disease prediction model demonstrated substantial accuracy, with a custom Na
 
 ![download (5)](https://github.com/user-attachments/assets/1f8ad5b6-f0a2-4668-bf19-8d17edb9b34c)
 
+Precision: 0.8794849295253367
+Recall: 0.8919071873231466
+F1 Score: 0.8733732688798687
 
+An ROC AUC (Receiver Operating Characteristic Area Under the Curve) value of 0.82 indicates that the model performs relatively well in distinguishing between the classes. Here's how to interpret it:
+​
+An ROC AUC of 0.5 suggests random guessing, meaning the model performs no better than chance.
+An ROC AUC closer to 1 indicates better performance, with 1 being a perfect classifier.
+An ROC AUC above 0.8 is generally considered good discrimination capability.
+​
+​
+In this case, with an ROC AUC of 0.82, the model demonstrates good performance in distinguishing between the classes. It suggests that the model has a relatively low false positive rate while maintaining a high true positive rate, which is desirable in many classification tasks. However, the interpretation might vary depending on the specific context and requirements of the classification problem.
 Experimental Results
 
 The optimized Bernoulli Naive Bayes model significantly outperformed traditional models, highlighting its effectiveness in handling binary features for symptom-based disease prediction. The user-friendly interface ensures accessibility for all users, regardless of technical expertise.
