@@ -1,45 +1,192 @@
-DiagnoChat is an innovative healthcare chatbot designed to assist users in identifying potential health issues based on their symptoms. This user-friendly platform allows individuals to input symptoms via text or images, utilizing advanced machine learning models, particularly Bernoulli Naive Bayes, to provide accurate disease predictions. DiagnoChat also recommends nearby medical assistance for critical conditions, enhancing its utility and accessibility. This project highlights the development, functionality, and potential impact of DiagnoChat in democratizing healthcare access.
+from sklearn.naive_bayes import BernoulliNB
+import pandas as pd
+import numpy as np
 
-Keywords: Bernoulli Naive Bayes, GridSearchCV, SVM, KNN, Logistic Regression, Random Forest, DiagnoChat Interface, Symptom Description, Synonym Matching, Natural Language Processing (NLP).
+df = pd.read_csv("dis_sym_dataset_comb.csv")
 
-Introduction
+X = df.drop(columns='label_dis')
+y = df['label_dis']
 
-Precise disease diagnosis is critical for timely treatment and improved patient outcomes. Leveraging advancements in machine learning and NLP, DiagnoChat aims to provide an accessible and accurate disease diagnosis tool. This study focuses on developing a system that interprets user symptoms using synonym matching and symptom suggestion, utilizing machine learning models for precise predictions.
+nb_classifier = BernoulliNB()
+nb_classifier.fit(X, y)
 
-Related Work
+feature_probabilities = nb_classifier.feature_log_prob_
+probabilities = pd.DataFrame(np.exp(feature_probabilities), columns=df.columns[1:])
 
-Prior research has demonstrated the efficacy of machine learning models like Gaussian and Bernoulli Naive Bayes in disease diagnosis. Studies have shown high accuracy rates for these models, emphasizing their potential to enhance diagnostic processes and healthcare accessibility.
+grouped = df.groupby('label_dis')
 
-Design and Methodology
+probabilities_dict = {}
 
-Dataset
 
-The dataset, sourced from the National Health Portal of India, contains information on over 200 diseases and 489 symptoms. This data is used to train machine learning models for disease prediction.
+average_probabilities_dict = {}
 
-Design Approach
+for name, group in grouped:
+    group_features = group.drop(columns='label_dis')
+    
+    symptom_probs = probabilities.loc[0][group_features.columns] * group_features
+    
+    total_prob = symptom_probs.sum(axis=1)
+    
+    relative_probs = symptom_probs.div(total_prob, axis=0)
+    
+    non_zero_probs = relative_probs.loc[:, (relative_probs > 0).any()]
+    
+    avg_probabilities = non_zero_probs.mean(axis=0)
+    
+    average_probabilities_dict[name] = avg_probabilities
 
-The project integrates machine learning and NLP techniques to develop a versatile chatbot interface. Key steps include refining user input, employing dynamic classifiers, and incorporating a recommendation system for medical assistance.
+for disease, avg_probs in average_probabilities_dict.items():
+    print(f"Probabilities for symptoms given Disease {disease}:")
+    print(avg_probs)
+    print()
 
-Methodology
+symptom_given_disease_prob_df = pd.DataFrame(average_probabilities_dict)
+symptom_given_disease_prob_df = symptom_given_disease_prob_df.transpose()
+symptom_given_disease_prob_df.to_csv("symptom_given-disease_prob.csv")
 
-1. Probability Calculation: Bayesian inference is used to calculate disease probabilities based on symptoms.
-2. NLP Feature Extraction: Symptoms are extracted using regular expressions and a custom synonym dictionary.
-3. Machine Learning Predictions: A trained classifier predicts diseases based on user-input symptoms.
-4. ChatBot Interface: The interface, built with HTML and JavaScript, supports text and image inputs for symptom description.
-5. Medical Assistance Recommendations: Critical conditions trigger recommendations for nearby healthcare facilities.
+Finding probability of each disease given a symptom, using Bayes' theorem 
+symptom_given_disease_prob_df = pd.read_csv("/Users/rudranighosh/Documents/SET 2/symptom_given-disease_prob.csv", index_col=0)
 
-Machine Learning Models
+symptom_given_disease_prob_df.fillna(0, inplace=True)
+symptom_given_disease_prob_df= symptom_given_disease_prob_df.apply(pd.to_numeric, errors='coerce')
+symptoms =symptom_given_disease_prob_df.columns
 
-Various models, including Logistic Regression, SVM, KNN, Decision Tree, Random Forest, and Bernoulli Naive Bayes, were evaluated. The Bernoulli Naive Bayes model, optimized with GridSearchCV, achieved the highest accuracy of 90.11%.
+symptom_given_disease_prob_df = pd.read_csv
 
-Accuracy and Validation
+symptom_given_disease_prob_df = pd.read_csv("/Users/rudranighosh/Documents/SET 2/symptom_given-disease_prob.csv", index_col=0)
 
-The disease prediction model demonstrated substantial accuracy, with a custom Naive Bayes model achieving 70.91% and the GridSearchCV-optimized model reaching 90.11%. Rigorous validation techniques confirmed the model's reliability and potential for clinical use.
+symptom_given_disease_prob_df.fillna(0, inplace=True)
+symptom_given_disease_prob_df= symptom_given_disease_prob_df.apply(pd.to_numeric, errors='coerce')
+symptoms =symptom_given_disease_prob_df.columns
 
-Experimental Results
 
-The optimized Bernoulli Naive Bayes model significantly outperformed traditional models, highlighting its effectiveness in handling binary features for symptom-based disease prediction. The user-friendly interface ensures accessibility for all users, regardless of technical expertise.
+disease_given_symptom_prob_df = symptom_given_disease_prob_df.transpose()
 
-Summary and Implications
+# prior probabilities of diseases
+prior_probabilities = disease_given_symptom_prob_df.sum() / len(disease_given_symptom_prob_df)
 
-Through comprehensive experimentation with various machine learning models, DiagnoChat achieved notable accuracy improvements in disease prediction. The project underscores the potential of AI in healthcare, providing a foundation for future advancements in accessible and precise disease diagnosis.
+# probability of each disease given a symptom using Bayes' theorem
+def calculate_disease_given_symptom(symptom_prob):
+    return (symptom_prob * prior_probabilities) / symptom_prob.sum()
+
+disease_probabilities_dict = {}
+for symptom in disease_given_symptom_prob_df.index:
+    symptom_prob = disease_given_symptom_prob_df.loc[symptom]
+    disease_probabilities = calculate_disease_given_symptom(symptom_prob)
+    disease_probabilities_dict[symptom] = disease_probabilities
+
+disease_probabilities_df = pd.DataFrame(disease_probabilities_dict)
+disease_probabilities_df.to_csv("/Users/rudranighosh/Documents/SET 2/disease_probabilities_given_symptom.csv")
+
+
+Creating a dictionary of symptoms along with its corresponding synonyms/ common names, Followed by Extracting Symptoms using Regular Expressions
+
+Predicting probability of top 5 possible diseases given symptom, i.e. P(Disease/Symptoms)
+disease_probabilities_df = pd.read_csv("disease_probabilities_given_symptom.csv", index_col=0)
+​
+X = df.drop(columns='label_dis')  # Symptoms
+y = df['label_dis']                # Disease
+​
+​
+nb_classifier = BernoulliNB()
+nb_classifier.fit(X, y)
+​
+def predict_disease(symptoms):
+    combined_symptoms = [1 if symptom in symptoms else 0 for symptom in disease_probabilities_df.columns]
+    disease_probabilities = nb_classifier.predict_proba([combined_symptoms])[0]
+    disease_probabilities = pd.Series(disease_probabilities, index=disease_probabilities_df.index)
+    return disease_probabilities.sort_values(ascending=False)
+
+Taking in user input in real time
+user_input = input("Enter your symptoms") 
+​
+extracted_symptoms = extract_symptoms(user_input)
+​
+print("Following symptoms have been extracted", extracted_symptoms)
+​
+predicted_diseases = predict_disease(extracted_symptoms)
+​
+print("Predicted diseases based on symptoms:")
+print(predicted_diseases.sort_values(ascending=False).head())
+​
+Enter your symptoms
+Following symptoms have been extracted []
+Predicted diseases based on symptoms:
+Myocardial Infarction (Heart Attack)    0.317466
+Anthrax                                 0.155007
+Polycystic ovary syndrome (PCOS)        0.155007
+Lead poisoning                          0.059693
+Rabies                                  0.059693
+dtype: float64
+
+inp=['cold','fever','runny nose','headache']
+
+
+def prediction_disease(symptoms):
+    combined_symptoms = [1 if symptom in symptoms else 0 for symptom in disease_probabilities_df.columns]
+    disease_probabilities = nb_classifier.predict_proba([combined_symptoms])[0]
+    disease_probabilities = pd.Series(disease_probabilities, index=disease_probabilities_df.index)
+    most_likely_disease = disease_probabilities.idxmax()
+    return most_likely_disease
+
+predicted_disease = prediction_disease(inp)
+print(predicted_disease)
+
+
+​import pandas as pd
+
+df = pd.read_csv("/Users/rudranighosh/Documents/SET 2/dis_sym_dataset_comb.csv")
+
+symptoms_arrays = []
+
+for index, row in df.iterrows():
+    disease_name = row[df.columns[0]]
+    disease_symptoms = []
+    for col in df.columns[1:]:
+        if row[col] == 1:
+            disease_symptoms.append(col)
+    symptoms_arrays.append((disease_name, disease_symptoms))
+
+for i, (disease_name, symptoms_array) in enumerate(symptoms_arrays):
+    print(f"Disease: {disease_name}, symptoms: {symptoms_array}")
+
+symptoms_df = pd.DataFrame(symptoms_arrays, columns=["Disease", "Symptoms"])
+
+# Sample 10% of the data
+#sampled_data = symptoms_df.sample(frac=0.2, random_state=56)
+sampled_data = symptoms_df.sample(frac=0.4, random_state=1)
+
+print(sampled_data.head())
+
+sampled_data['predicted_disease'] = ""
+
+for index, row in sampled_data.iterrows():
+    symptoms = row['Symptoms']  # Extract symptoms for the current row
+    predicted_disease = prediction_disease(symptoms)  # Predict the disease
+    sampled_data.at[index, 'predicted_disease'] = predicted_disease  # Store the predicted disease
+
+sampled_data.head(20)
+
+sampled_data['match'] = sampled_data['Disease'] == sampled_data['predicted_disease']
+sampled_data.head(40)
+
+accuracy=(sampled_data["match"].sum()/len(sampled_data))*100
+print(accuracy)
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+actual_counts = sampled_data['Disease'].value_counts()
+predicted_counts = sampled_data['predicted_disease'].value_counts()
+
+counts_df = pd.DataFrame({'Actual': actual_counts, 'Predicted': predicted_counts})
+
+counts_df.plot(kind='bar', figsize=(12, 8))
+plt.xlabel('Disease')
+plt.ylabel('Frequency')
+plt.title('Actual vs Predicted Disease')
+plt.xticks(rotation=45)
+plt.legend(title='Match', loc='upper right')
+plt.tight_layout()
+plt.show()
+
